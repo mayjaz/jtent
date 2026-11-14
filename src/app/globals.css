@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background:#090909; color:#f3eee6; font-family:'DM Sans',sans-serif; }
+::selection { background:#c9a56a; color:#090909; }
+.gold-text { background:linear-gradient(115deg,#f5e4bd 0%,#c9a56a 42%,#f8e8c5 68%,#a77c3e 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.display { font-family:'Playfair Display',Georgia,serif; }
+.panel { background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018)); border:1px solid rgba(201,165,106,.2); }
+.gold-line { height:1px; background:linear-gradient(90deg,transparent,#c9a56a,transparent); }
+.eyebrow { letter-spacing:.28em; text-transform:uppercase; font-size:10px; color:#c9a56a; }
+.btn-gold { background:linear-gradient(120deg,#f0d8a8,#b98b4c); color:#100d08; transition:all .2s ease; }
+.btn-gold:hover { filter:brightness(1.08); transform:translateY(-1px); }
+input,select { color-scheme:dark; }
+.ticket-admin input,.ticket-admin select,.ticket-admin textarea { color-scheme:light; color:#1e293b; }
+body:has(.ticket-admin) > footer,body:has(.admin-auth) > footer { display:none; }
+.admin-auth input { color-scheme:light; color:#1e293b; }
