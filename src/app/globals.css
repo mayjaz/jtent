@@ -18,3 +18,6 @@ input,select { color-scheme:dark; }
 .ticket-admin input,.ticket-admin select,.ticket-admin textarea { color-scheme:light; color:#1e293b; }
 body:has(.ticket-admin) > footer,body:has(.admin-auth) > footer { display:none; }
 .admin-auth input { color-scheme:light; color:#1e293b; }
+.ticket-checkout input { color-scheme:light; color:#1e293b; background-color:#fff; }
+.ticket-checkout input::placeholder { color:#64748b; opacity:1; }
+.ticket-checkout input[type="radio"] { accent-color:#0f172a; }
