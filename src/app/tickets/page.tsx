@@ -59,7 +59,7 @@ export default function TicketsPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const total = useMemo(() => inventory.reduce((amount, type) => {
+  const total = useMemo(() => (Array.isArray(inventory) ? inventory : []).reduce((amount, type) => {
     const quantity = quantities[type.code] ?? 0;
     return amount + type.price * quantity;
   }, 0), [inventory, quantities]);
@@ -84,6 +84,7 @@ export default function TicketsPage() {
     async function load() {
       try {
         const catalog = await apiRequest<TicketType[]>("/api/tickets?action=catalog");
+        if (!Array.isArray(catalog)) throw new Error("Ticket availability data was invalid. Please try again later.");
         if (active) setInventory(catalog);
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : "Could not load ticket availability");
@@ -172,7 +173,7 @@ export default function TicketsPage() {
     setAttendeeNames({ GENERAL: [], VIP: [] });
   }
 
-  return <main className="min-h-screen bg-[#f7f8fa] px-4 py-10 text-slate-800 sm:px-6 sm:py-14">
+  return <main className="ticket-checkout min-h-screen bg-[#f7f8fa] px-4 py-10 text-slate-800 sm:px-6 sm:py-14">
     <div className="mx-auto max-w-5xl">
       <header className="mb-8">
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-slate-500">23 January 2027 · BaiFuYi Hotel, Beijing</p>
