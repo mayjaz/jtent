@@ -48,6 +48,12 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("ticket_public_catalog");
     if (error) throw new Error(error.message);
+    if (!Array.isArray(data)) {
+      return NextResponse.json(
+        { error: "Ticket availability is temporarily unavailable. Please try again later." },
+        { status: 503, headers: { "Cache-Control": "no-store" } }
+      );
+    }
     return NextResponse.json({ data }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return failure(error);
