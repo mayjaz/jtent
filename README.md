@@ -27,7 +27,7 @@ A premium Next.js event website with separate Miss Zimbabwe China and Zim Excell
    `update public.profiles set role='admin' where id='YOUR_AUTH_USER_UUID';`
 
 ## Add categories and nominees
-Use the `/admin` organiser workspace to create categories and add nominees. Pageant contestants can include a contestant number, age, height, profession, hobbies, motto, About Me, and My Vision; their profiles appear on the pageant page when published.
+Use the `/admin` organiser workspace to create categories, add nominees, and edit existing nominee profiles. Pageant contestants can include a contestant number, hometown, age, height, profession, hobbies, motto, About Me, and My Vision; their profiles appear on the pageant page when published.
 
 After running `supabase/schema.sql`, apply `supabase/migrations/20261119100000_pageant_contestant_fields.sql` and `supabase/migrations/20261119110000_contestant_portrait_storage.sql` in the Supabase SQL Editor, in that order. The admin panel uploads pageant portraits to a public Supabase Storage bucket; uploads and deletion are restricted to admins, and files are limited to JPEG, PNG, or WebP up to 5 MB.
 

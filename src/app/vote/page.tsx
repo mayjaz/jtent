@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { sortContestantsByNumber } from "@/lib/contestant-sort";
 
 type Nominee = {
   id: string;
@@ -10,6 +11,8 @@ type Nominee = {
   image_url: string | null;
   category_id: string;
   category: { id: string; name: string };
+  contestant_number?: string | null;
+  sort_order?: number | null;
 };
 
 export default function VotePage() {
@@ -32,7 +35,7 @@ export default function VotePage() {
       setError("");
       const { data, error: requestError } = await supabase
         .from("nominees")
-        .select("id,name,track,image_url,category_id,category:categories(id,name)")
+        .select("id,name,track,image_url,category_id,contestant_number,sort_order,category:categories(id,name)")
         .eq("track", track)
         .eq("published", true)
         .order("sort_order");
@@ -42,7 +45,9 @@ export default function VotePage() {
         setError(requestError.message);
         setItems([]);
       } else {
-        setItems((data ?? []) as Nominee[]);
+        setItems(track === "pageant"
+          ? sortContestantsByNumber((data ?? []) as Nominee[])
+          : ((data ?? []) as Nominee[]));
       }
       setLoading(false);
     }

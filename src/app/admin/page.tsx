@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { LockKeyhole, Plus, RefreshCw } from "lucide-react";
+import { LockKeyhole, Pencil, Plus, RefreshCw } from "lucide-react";
+import { sortContestantsByNumber } from "@/lib/contestant-sort";
 
 export default function AdminPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -19,8 +20,10 @@ export default function AdminPage() {
   const [imageUrl,setImageUrl] = useState("");
   const [imageFile,setImageFile] = useState<File|null>(null);
   const [savingNominee,setSavingNominee] = useState(false);
+  const [editingNominee,setEditingNominee] = useState<any>(null);
   const [contestantFields,setContestantFields] = useState({
     contestantNumber:"",
+    hometown:"",
     age:"",
     height:"",
     profession:"",
@@ -45,7 +48,13 @@ export default function AdminPage() {
         supabase.from("nominees").select("*").order("sort_order"),
         supabase.from("votes").select("nominee_id,category_id")
       ]);
-      setCategories(c.data||[]); setNominees(n.data||[]); setVotes(v.data||[]);
+      const nomineeRows = n.data||[];
+      setCategories(c.data||[]);
+      setNominees([
+        ...sortContestantsByNumber(nomineeRows.filter((nominee:any) => nominee.track === "pageant")),
+        ...nomineeRows.filter((nominee:any) => nominee.track !== "pageant")
+      ]);
+      setVotes(v.data||[]);
     }
     setLoading(false);
   }
@@ -55,6 +64,33 @@ export default function AdminPage() {
     const {error} = await supabase.from("categories").insert({name:categoryName,track,sort_order:categories.length});
     if(error) setNotice(error.message); else {setCategoryName("");setNotice("Category created.");load();}
   }
+  function resetNomineeForm() {
+    setEditingNominee(null);
+    setNomineeName("");
+    setCategoryId("");
+    setImageUrl("");
+    setImageFile(null);
+    setContestantFields({contestantNumber:"",hometown:"",age:"",height:"",profession:"",hobbies:"",motto:"",aboutMe:"",vision:""});
+  }
+  function editNominee(n:any) {
+    setEditingNominee(n);
+    setNomineeName(n.name??"");
+    setCategoryId(n.category_id);
+    setImageUrl(n.image_url??"");
+    setImageFile(null);
+    setContestantFields({
+      contestantNumber:n.contestant_number??"",
+      hometown:n.location??"",
+      age:n.age==null?"":String(n.age),
+      height:n.height??"",
+      profession:n.profession??"",
+      hobbies:n.hobbies??"",
+      motto:n.motto??"",
+      aboutMe:n.about_me??"",
+      vision:n.vision??""
+    });
+    document.getElementById("nominee-form")?.scrollIntoView({behavior:"smooth",block:"center"});
+  }
   async function addNominee(e:any) {
     e.preventDefault(); setNotice("");
     const cat=categories.find(c=>c.id===categoryId);
@@ -62,7 +98,9 @@ export default function AdminPage() {
     setSavingNominee(true);
     let uploadedPath:string|null=null;
     try {
-      let uploadedImageUrl:string|null=null;
+      let uploadedImageUrl:string|null=editingNominee
+        ? editingNominee.image_url??null
+        : cat.track==="awards"?(imageUrl.trim()||null):null;
       if(cat.track==="pageant"&&imageFile) {
         const extension=imageFile.type==="image/jpeg"?"jpg":imageFile.type==="image/png"?"png":"webp";
         const storagePath=`contestants/${crypto.randomUUID()}.${extension}`;
@@ -76,13 +114,14 @@ export default function AdminPage() {
         uploadedImageUrl=supabase.storage.from("contestant-portraits").getPublicUrl(data.path).data.publicUrl;
       }
 
-      const {error} = await supabase.from("nominees").insert({
+      const nomineeData = {
         name:nomineeName,
         category_id:categoryId,
         track:cat.track,
-        image_url:cat.track==="pageant"?uploadedImageUrl:imageUrl.trim()||null,
-        published:false,
-        sort_order:nominees.length,
+        location:cat.track==="pageant"?contestantFields.hometown.trim()||null:(editingNominee?.track==="awards"?editingNominee.location??null:null),
+        image_url:cat.track==="pageant"?uploadedImageUrl:(imageUrl.trim()||null),
+        published:editingNominee?editingNominee.published:false,
+        sort_order:editingNominee?editingNominee.sort_order:nominees.length,
         ...(cat.track==="pageant" ? {
           contestant_number:contestantFields.contestantNumber.trim()||null,
           age:contestantFields.age===""?null:Number(contestantFields.age),
@@ -92,15 +131,25 @@ export default function AdminPage() {
           motto:contestantFields.motto.trim()||null,
           about_me:contestantFields.aboutMe.trim()||null,
           vision:contestantFields.vision.trim()||null
-        } : {})
-      });
+        } : {
+          contestant_number:null,
+          age:null,
+          height:null,
+          profession:null,
+          hobbies:null,
+          motto:null,
+          about_me:null,
+          vision:null
+        })
+      };
+      const {error} = editingNominee
+        ? await supabase.from("nominees").update(nomineeData).eq("id",editingNominee.id)
+        : await supabase.from("nominees").insert(nomineeData);
       if(error) throw new Error(error.message);
       uploadedPath=null;
-      setNomineeName("");
-      setImageUrl("");
-      setImageFile(null);
-      setContestantFields({contestantNumber:"",age:"",height:"",profession:"",hobbies:"",motto:"",aboutMe:"",vision:""});
-      setNotice("Nominee added as a draft.");
+      const wasEditing=Boolean(editingNominee);
+      resetNomineeForm();
+      setNotice(wasEditing?"Nominee updated.":"Nominee added as a draft.");
       load();
     } catch(reason) {
       let message=reason instanceof Error?reason.message:"Could not add nominee.";
@@ -144,13 +193,13 @@ export default function AdminPage() {
     {notice&&<p className="panel p-4 mt-7 text-sm text-[#e6c995]">{notice}</p>}
     <div className="grid lg:grid-cols-2 gap-5 mt-10">
       <form onSubmit={addCategory} className="panel p-7"><Plus className="text-[#c9a56a]" size={20}/><h2 className="display text-2xl mt-4">Create category</h2><label className="eyebrow block mt-6 mb-2">Category name</label><input required value={categoryName} onChange={e=>setCategoryName(e.target.value)} className="w-full bg-black/40 border border-white/15 p-3 text-sm outline-none focus:border-[#c9a56a]"/><label className="eyebrow block mt-5 mb-2">Programme</label><select value={track} onChange={e=>setTrack(e.target.value)} className="w-full bg-black border border-white/15 p-3 text-sm"><option value="pageant">Miss Zimbabwe China</option><option value="awards">Excellence Awards</option></select><button className="btn-gold px-5 py-3 mt-6 text-[10px] uppercase tracking-widest font-bold">Add category</button></form>
-      <form onSubmit={addNominee} className="panel p-7">
+      <form id="nominee-form" onSubmit={addNominee} className="panel p-7">
         <Plus className="text-[#c9a56a]" size={20}/>
-        <h2 className="display text-2xl mt-4">Add nominee</h2>
+        <h2 className="display text-2xl mt-4">{editingNominee?"Edit nominee":"Add nominee"}</h2>
         <label className="eyebrow block mt-6 mb-2">Name</label>
         <input required value={nomineeName} onChange={e=>setNomineeName(e.target.value)} className="w-full bg-black/40 border border-white/15 p-3 text-sm outline-none focus:border-[#c9a56a]"/>
         <label className="eyebrow block mt-5 mb-2">Category</label>
-        <select required value={categoryId} onChange={e=>{setCategoryId(e.target.value);setImageFile(null);setImageUrl("");}} className="w-full bg-black border border-white/15 p-3 text-sm">
+        <select required value={categoryId} onChange={e=>{setCategoryId(e.target.value);setImageFile(null);if(!editingNominee)setImageUrl("");}} className="w-full bg-black border border-white/15 p-3 text-sm">
           <option value="">Select category</option>
           {categories.map(c=><option key={c.id} value={c.id}>{c.name} · {c.track}</option>)}
         </select>
@@ -158,6 +207,7 @@ export default function AdminPage() {
           <label className="eyebrow block mt-5 mb-2">Portrait image (optional · JPEG, PNG or WebP · max 5 MB)</label>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePortraitChange} className="w-full bg-black/40 border border-white/15 p-3 text-sm outline-none focus:border-[#c9a56a]"/>
           {imageFile&&<p className="mt-2 text-xs text-white/45">Selected: {imageFile.name}</p>}
+          {editingNominee?.image_url&&!imageFile&&<p className="mt-2 text-xs text-white/45">Current portrait will be kept unless you choose a replacement.</p>}
         </> : <>
           <label className="eyebrow block mt-5 mb-2">Portrait image URL (optional)</label>
           <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} className="w-full bg-black/40 border border-white/15 p-3 text-sm outline-none focus:border-[#c9a56a]"/>
@@ -166,6 +216,7 @@ export default function AdminPage() {
           <h3 className="eyebrow mt-7 border-t border-white/10 pt-5">Contestant profile</h3>
           <div className="grid gap-4 sm:grid-cols-2 mt-4">
             <label className="text-xs text-white/60">Contestant number<input value={contestantFields.contestantNumber} onChange={e=>setContestantFields({...contestantFields,contestantNumber:e.target.value})} className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
+            <label className="text-xs text-white/60">Hometown<input value={contestantFields.hometown} onChange={e=>setContestantFields({...contestantFields,hometown:e.target.value})} className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
             <label className="text-xs text-white/60">Age<input type="number" min="0" step="1" value={contestantFields.age} onChange={e=>setContestantFields({...contestantFields,age:e.target.value})} className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
             <label className="text-xs text-white/60">Height<input value={contestantFields.height} onChange={e=>setContestantFields({...contestantFields,height:e.target.value})} placeholder="e.g. 168 cm" className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
             <label className="text-xs text-white/60">Profession<input value={contestantFields.profession} onChange={e=>setContestantFields({...contestantFields,profession:e.target.value})} className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
@@ -175,10 +226,13 @@ export default function AdminPage() {
             <label className="text-xs text-white/60 sm:col-span-2">My Vision<textarea rows={4} value={contestantFields.vision} onChange={e=>setContestantFields({...contestantFields,vision:e.target.value})} className="mt-2 w-full bg-black/40 border border-white/15 p-3 text-sm text-white outline-none focus:border-[#c9a56a]"/></label>
           </div>
         </>}
-        <button disabled={savingNominee} className="btn-gold px-5 py-3 mt-6 text-[10px] uppercase tracking-widest font-bold disabled:opacity-50">{savingNominee?"Saving nominee…":"Add draft nominee"}</button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button disabled={savingNominee} className="btn-gold px-5 py-3 text-[10px] uppercase tracking-widest font-bold disabled:opacity-50">{savingNominee?"Saving nominee…":editingNominee?"Save changes":"Add draft nominee"}</button>
+          {editingNominee&&<button type="button" disabled={savingNominee} onClick={resetNomineeForm} className="border border-white/20 px-5 py-3 text-[10px] uppercase tracking-widest text-white/65 disabled:opacity-50">Cancel edit</button>}
+        </div>
       </form>
     </div>
     <section className="mt-14"><div className="flex justify-between items-end border-b border-white/10 pb-4"><h2 className="display text-3xl">Voting categories</h2><span className="text-xs text-white/40">{categories.length} total</span></div><div className="divide-y divide-white/10">{categories.map(c=><div key={c.id} className="py-5 flex flex-wrap justify-between items-center gap-4"><div><p className="display text-xl">{c.name}</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{c.track} · {nominees.filter(n=>n.category_id===c.id).length} nominees</p></div><div className="flex items-center gap-4"><span className={`text-[10px] uppercase tracking-widest ${c.voting_open?"text-emerald-300":"text-white/35"}`}>{c.voting_open?"Voting open":"Voting closed"}</span><button onClick={()=>toggleCategory(c)} className="border border-[#c9a56a]/50 px-4 py-2 text-[10px] uppercase tracking-widest">{c.voting_open?"Close voting":"Open voting"}</button></div></div>)}</div></section>
-    <section className="mt-14"><div className="flex justify-between items-end border-b border-white/10 pb-4"><h2 className="display text-3xl">Nominee management</h2><span className="text-xs text-white/40">{votes.length} votes recorded</span></div><div className="divide-y divide-white/10">{nominees.map(n=><div key={n.id} className="py-4 flex flex-wrap items-center justify-between gap-4"><div><p className="display text-lg">{n.name}</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{categories.find(c=>c.id===n.category_id)?.name||"Category"} · {counts[n.id]||0} votes</p></div><button onClick={()=>togglePublished(n)} className={`border px-4 py-2 text-[10px] uppercase tracking-widest ${n.published?"border-emerald-500/40 text-emerald-300":"border-white/20 text-white/50"}`}>{n.published?"Published · unpublish":"Draft · publish"}</button></div>)}</div></section>
+    <section className="mt-14"><div className="flex justify-between items-end border-b border-white/10 pb-4"><h2 className="display text-3xl">Nominee management</h2><span className="text-xs text-white/40">{votes.length} votes recorded</span></div><div className="divide-y divide-white/10">{nominees.map(n=><div key={n.id} className="py-4 flex flex-wrap items-center justify-between gap-4"><div><p className="display text-lg">{n.name}</p><p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">{categories.find(c=>c.id===n.category_id)?.name||"Category"} · {counts[n.id]||0} votes</p></div><div className="flex flex-wrap items-center gap-3"><button type="button" onClick={()=>editNominee(n)} className="border border-white/20 px-4 py-2 text-[10px] uppercase tracking-widest text-white/65 flex items-center gap-2"><Pencil size={12}/> Edit</button><button onClick={()=>togglePublished(n)} className={`border px-4 py-2 text-[10px] uppercase tracking-widest ${n.published?"border-emerald-500/40 text-emerald-300":"border-white/20 text-white/50"}`}>{n.published?"Published · unpublish":"Draft · publish"}</button></div></div>)}</div></section>
   </main>;
 }
