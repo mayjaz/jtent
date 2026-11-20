@@ -20,6 +20,7 @@ export function PageantVoteButton({ nomineeId, nomineeName, votingOpen }: Props)
   const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState("");
   const [signedIn, setSignedIn] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,15 +32,19 @@ export function PageantVoteButton({ nomineeId, nomineeName, votingOpen }: Props)
     let active = true;
 
     async function loadStatus() {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!active) return;
-      if (userError) {
-        setError(userError.message);
+      if (sessionError) {
+        setError(sessionError.message);
         setLoading(false);
         return;
       }
 
+      const user = session?.user ?? null;
       setSignedIn(Boolean(user));
+      setSignedInEmail(user?.email ?? null);
+      const authError = new URLSearchParams(window.location.search).get("authError");
+      if (authError) setError(authError);
       if (user) {
         const { data, error: statusError } = await supabase.rpc("pageant_vote_status");
         if (!active) return;
@@ -90,6 +95,23 @@ export function PageantVoteButton({ nomineeId, nomineeName, votingOpen }: Props)
     setBusy(false);
   }
 
+  async function signOut() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      setError(signOutError.message);
+    } else {
+      setSignedIn(false);
+      setSignedInEmail(null);
+      setAlreadyVoted(false);
+      setVotedFor(null);
+      setEmail("");
+    }
+    setBusy(false);
+  }
+
   if (!votingOpen) {
     return <div className="panel p-5 text-sm text-white/55">Voting is currently closed for this category.</div>;
   }
@@ -117,5 +139,11 @@ export function PageantVoteButton({ nomineeId, nomineeName, votingOpen }: Props)
           </button>
           <p className="mt-3 text-xs leading-5 text-white/40">A verified email account is required. After signing in, return to this page to vote.</p>
         </form>}
+    {signedIn && <div className="mt-5 border-t border-white/10 pt-4">
+      {signedInEmail && <p className="text-xs text-white/45">Signed in as {signedInEmail}</p>}
+      <button type="button" onClick={signOut} disabled={busy} className="mt-3 text-xs uppercase tracking-widest text-[#d9b77e] disabled:opacity-50">
+        {busy ? "Signing out…" : "Sign out / use another email"}
+      </button>
+    </div>}
   </section>;
 }

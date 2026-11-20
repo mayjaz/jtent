@@ -26,6 +26,7 @@ function createFallbackClient() {
   return {
     auth: {
       getUser: async () => ({ data: { user: null }, error: null }),
+      getSession: async () => ({ data: { session: null }, error: null }),
       signInWithOtp: async () => ({ data: { user: null }, error: null }),
       signOut: async () => ({ error: null }),
       exchangeCodeForSession: async () => ({ data: { session: null }, error: null })
