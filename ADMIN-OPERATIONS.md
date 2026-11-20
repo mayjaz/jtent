@@ -14,7 +14,10 @@
 ## Opening and closing voting
 - Open: set `voting_open = true` for the category.
 - Close: set `voting_open = false`.
-- The RPC checks open status and optional start/end timestamps on every vote.
+- The `20261120100000_daily_pageant_voting.sql` migration opens pageant categories that already contain published contestants. New categories stay closed until opened by an admin.
+- The RPC checks open status, optional start/end timestamps, verified email, and the daily pageant vote limit on every vote.
+- Pageant voting allows one contestant vote per verified account per China-time calendar day across all pageant categories. Awards retain one vote per account per category.
+- Voters open an individual shareable contestant page at `/pageant/<contestant-id>` and vote there. A successful vote cannot be changed and the voter may vote again after midnight China time.
 
 ## Results
 Run this query in the Supabase SQL editor (or build a protected admin reporting screen):

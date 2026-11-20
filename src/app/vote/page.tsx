@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { sortContestantsByNumber } from "@/lib/contestant-sort";
 
@@ -10,7 +11,7 @@ type Nominee = {
   track: "pageant" | "awards";
   image_url: string | null;
   category_id: string;
-  category: { id: string; name: string };
+  category: { id: string; name: string; voting_open: boolean; starts_at: string | null; ends_at: string | null };
   contestant_number?: string | null;
   sort_order?: number | null;
 };
@@ -35,7 +36,7 @@ export default function VotePage() {
       setError("");
       const { data, error: requestError } = await supabase
         .from("nominees")
-        .select("id,name,track,image_url,category_id,contestant_number,sort_order,category:categories(id,name)")
+        .select("id,name,track,image_url,category_id,contestant_number,sort_order,category:categories(id,name,voting_open,starts_at,ends_at)")
         .eq("track", track)
         .eq("published", true)
         .order("sort_order");
@@ -66,7 +67,9 @@ export default function VotePage() {
     <p className="text-white/50 max-w-2xl leading-7 mt-5">Explore the published contestants and nominees across our programmes.</p>
 
     <div role="status" className="panel mt-8 border-[#c9a56a]/30 p-5 text-sm text-[#e6c995]">
-      Voting is currently disabled. You can still browse the published nominees.
+      {track === "pageant"
+        ? "Pageant voters can cast one vote per day using a verified email account. Open a contestant profile to vote; the daily limit resets at midnight China time."
+        : "Browse the published Excellence Awards nominees."}
     </div>
 
     <div className="flex gap-2 mt-10 border-b border-white/10">
@@ -78,21 +81,27 @@ export default function VotePage() {
       : error ? <div role="alert" className="panel mt-8 p-5 text-sm text-red-300">Could not load nominees: {error}</div>
         : categories.length ? categories.map((category) => {
           const nominees = items.filter((nominee) => nominee.category.id === category.id);
+          const now = Date.now();
+          const votingOpen = category.voting_open
+            && (!category.starts_at || Date.parse(category.starts_at) <= now)
+            && (!category.ends_at || Date.parse(category.ends_at) >= now);
           return <section key={category.id} className="mt-10">
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
               <h2 className="display text-2xl">{category.name}</h2>
-              <span className="text-[10px] uppercase tracking-widest text-white/35">{nominees.length} nominees</span>
+              <span className={`text-[10px] uppercase tracking-widest ${track === "pageant" && votingOpen ? "text-emerald-300" : "text-white/35"}`}>
+                {track === "pageant" ? votingOpen ? "Voting open" : "Voting closed" : `${nominees.length} nominees`}
+              </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {nominees.map((nominee) => <article key={nominee.id} className="panel flex items-center gap-4 p-4">
+              {nominees.map((nominee) => <Link key={nominee.id} href={track === "pageant" ? `/pageant/${nominee.id}` : "/awards"} className="panel flex items-center gap-4 p-4 transition hover:border-[#c9a56a]/50">
                 <div className="h-16 w-14 flex-shrink-0 overflow-hidden bg-white/5">
                   {nominee.image_url && <img src={nominee.image_url} alt={nominee.name} className="h-full w-full object-cover" />}
                 </div>
                 <div>
                   <h3 className="display text-lg">{nominee.name}</h3>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">{track === "pageant" ? "Contestant" : "Nominee"}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-white/40">{track === "pageant" ? "View profile and vote" : "Nominee"}</p>
                 </div>
-              </article>)}
+              </Link>)}
             </div>
           </section>;
         })

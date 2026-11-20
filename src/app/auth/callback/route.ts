@@ -4,5 +4,7 @@ export async function GET(request: Request) {
  const { searchParams, origin } = new URL(request.url);
  const code = searchParams.get("code");
  if (code) { const supabase = await createClient(); await supabase.auth.exchangeCodeForSession(code); }
- return NextResponse.redirect(`${origin}/vote`);
+ const next = searchParams.get("next");
+ const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : "/vote";
+ return NextResponse.redirect(new URL(safeNext, origin));
 }

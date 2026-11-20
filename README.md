@@ -5,9 +5,9 @@ A premium Next.js event website with separate Miss Zimbabwe China and Zim Excell
 ## Included
 - Editorial black-and-champagne-gold design system
 - Responsive homepage, pageant nominees and awards nominees pages
-- Two-track voting interface with category grouping
-- Supabase email magic-link authentication
-- Server-enforced one-vote-per-category rule
+- Two-track nominee browsing with shareable pageant contestant profiles
+- Supabase email magic-link authentication for pageant voting
+- Server-enforced one-vote-per-day pageant limit per verified account (China time)
 - Voting-window validation in a Postgres RPC
 - Row-level security policies and admin role foundation
 
@@ -31,12 +31,12 @@ Use the `/admin` organiser workspace to create categories, add nominees, and edi
 
 After running `supabase/schema.sql`, apply `supabase/migrations/20261119100000_pageant_contestant_fields.sql` and `supabase/migrations/20261119110000_contestant_portrait_storage.sql` in the Supabase SQL Editor, in that order. The admin panel uploads pageant portraits to a public Supabase Storage bucket; uploads and deletion are restricted to admins, and files are limited to JPEG, PNG, or WebP up to 5 MB.
 
-The public `/vote` page is currently read-only. Apply `supabase/migrations/20261119120000_close_voting.sql` to close any categories that are currently open.
+If it has not already been applied, run `supabase/migrations/20261119120000_close_voting.sql` before applying `supabase/migrations/20261120100000_daily_pageant_voting.sql`. Do not rerun the close-voting migration after the daily-voting migration, because it closes every category. The daily-voting migration opens categories that already have published pageant contestants. Pageant contestant cards link to shareable profile pages at `/pageant/[id]`; visitors sign in through an email link and vote from the contestant profile. Voting is limited to one contestant per verified account each China-time calendar day. The database enforces the limit; the browser is not the security boundary. New categories remain closed until an admin opens them.
 
 ## Before launch
 - Review organiser-only admin access controls and live result reporting.
-- Configure Supabase email templates and a verified sender domain.
-- Add CAPTCHA / rate limiting and abuse monitoring to the authentication flow.
+- Enable email confirmation in Supabase Auth and configure its email delivery, templates, and a verified sender domain; the vote RPC rejects accounts without a confirmed email.
+- Add CAPTCHA / rate limiting and abuse monitoring to the authentication flow. Email verification limits casual abuse but does not prove one account per person; IP-based checks should be supplemental because shared networks can affect legitimate voters.
 - Publish clear voting rules, eligibility, privacy policy, and dispute process.
 - Decide whether voting is free or paid. If paid, implement payment verification server-side before enabling vote submission.
 - Test voting windows, duplicate attempts, account verification, and RLS with non-admin and admin accounts.
