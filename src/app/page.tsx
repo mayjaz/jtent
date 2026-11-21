@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, Award, CalendarDays, Crown, Globe2, MapPin, Sparkles, Ticket } from "lucide-react";
 import { EventCountdown } from "@/components/event-countdown";
+
+export const metadata: Metadata = {
+  title: "Zimbabwean Excellence Celebrated in China",
+  alternates: { canonical: "/" },
+  description: "Discover Zim Excellence China 2027, meet the Miss Zimbabwe China contestants, explore awards nominees, vote, and buy event tickets."
+};
+
 export default function Home() {
  return <main>
   <section className="relative min-h-[680px] flex items-center overflow-hidden">

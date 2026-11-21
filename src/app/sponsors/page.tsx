@@ -1,4 +1,11 @@
 import { Handshake } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sponsors",
+  description: "Meet the organisations and partners supporting Zim Excellence China 2027.",
+  alternates: { canonical: "/sponsors" }
+};
 
 export default function SponsorsPage() {
   return (

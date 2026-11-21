@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { NomineeCard } from "@/components/nominee-card";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Zim Excellence Awards Nominees",
+  description: "Explore the Zim Excellence Awards categories and nominees recognising Zimbabwean achievement, leadership and impact in China.",
+  alternates: { canonical: "/awards" }
+};
+
 export default async function AwardsPage() {
  const supabase = await createClient();
  const {data: nominees} = await supabase.from("nominees").select("*, categories(name)").eq("track","awards").eq("published",true).order("sort_order");

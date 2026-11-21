@@ -2,6 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { NomineeCard } from "@/components/nominee-card";
 import { sortContestantsByNumber } from "@/lib/contestant-sort";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Miss Zimbabwe China Contestants",
+  description: "Meet the Miss Zimbabwe China contestants, view their profiles, and cast a daily vote for the pageant contestant representing Zimbabwean excellence.",
+  alternates: { canonical: "/pageant" }
+};
+
 export default async function PageantPage() {
  const supabase = await createClient();
  const {data: nominees} = await supabase.from("nominees").select("*, categories(name)").eq("track","pageant").eq("published",true).order("sort_order");

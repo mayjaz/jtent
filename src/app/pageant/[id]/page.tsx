@@ -2,10 +2,45 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageantVoteButton } from "@/components/pageant-vote-button";
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: nominee } = await supabase
+    .from("nominees")
+    .select("name, contestant_number, about_me, image_url")
+    .eq("id", id)
+    .eq("track", "pageant")
+    .eq("published", true)
+    .single();
+
+  if (!nominee) {
+    return { title: "Contestant Not Found", robots: { index: false, follow: false } };
+  }
+
+  const title = `${nominee.name}${nominee.contestant_number ? ` — Contestant #${nominee.contestant_number}` : ""}`;
+  const description = nominee.about_me?.trim()
+    ? nominee.about_me.trim().slice(0, 155)
+    : `Meet ${nominee.name}, a Miss Zimbabwe China contestant, and cast your daily vote.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/pageant/${id}` },
+    openGraph: {
+      type: "profile",
+      title,
+      description,
+      url: `/pageant/${id}`,
+      images: nominee.image_url ? [{ url: nominee.image_url, alt: nominee.name }] : undefined
+    }
+  };
+}
 
 export default async function ContestantPage({ params }: PageProps) {
   const { id } = await params;
